@@ -124,53 +124,55 @@ class MapEditor(QtWidgets.QMainWindow):
         self.zoom = self.ui.zoomBox.currentData()
         self.pixels_per_cell = self.min_multiplier * self.zoom 
         self.draw_map()
-        
 
     def read(self, fn):
-        # try to open as fn or fn.pgm
+        # Read map file
         try:
             self.im = Image.open(fn)
             self.fn = fn
         except:
             fnpgm = fn + '.pgm'
-            print(fnpgm)
             try:
                 self.im = Image.open(fnpgm)
                 self.fn = fnpgm
             except:
-                #print(sys.exc_info()[0])
-                print("ERROR:  Cannot open file", fn, "or", fnpgm)
+                print("ERROR: Cannot open file", fn, "or", fnpgm)
                 sys.exit(1)
-
+        # Check if the image format is PGM
         if self.im.format != 'PPM':
-            print("ERROR:  This is not a PGM formatted file.")
+            print("ERROR: This is not a PGM formatted file.")
             sys.exit(1)
 
+        # Check if the image mode is L
         if self.im.mode != 'L':
-            print("ERROR:  This PGM file is not of mode L.")
-            sys.exit(1)   
+            print("ERROR: This PGM file is not of mode L.")
+            sys.exit(1)
 
+        # Set map width and height
         self.map_width_cells = self.im.size[0]
         self.map_height_cells = self.im.size[1]
 
-        self.ui.filename_lbl.setText(self.fn) 
+        # Display file information
+        self.ui.filename_lbl.setText(self.fn)
         self.ui.width_lbl.setText(str(self.map_width_cells))
         self.ui.height_lbl.setText(str(self.map_height_cells))
-
-        fn_yaml = os.path.splitext(fn)[0] + '.yaml'
+        
+        # Read YAML file
+        yaml_file = os.path.splitext(fn)[0] + '.yaml'
         try:
-            stream = open(fn_yaml, "r")
-            docs = yaml.load_all(stream)
-            for doc in docs:
-                self.occupied_thresh = doc['occupied_thresh']  # probability its occupied
-                self.free_thresh = doc['free_thresh']  # probability its uncertain or occupied
-                self.resolution = doc['resolution']    # in meters per cell
-                self.origin_x = doc['origin'][0]
-                self.origin_y = doc['origin'][1]
-        except:
-            print("ERROR:  Corresponding YAML file", fn_yaml, "is missing or incorrectly formatted.")
-            sys.exit(1) 
-
+            with open(yaml_file, 'r') as stream:
+                data = yaml.safe_load(stream)
+                self.occupied_thresh = data['occupied_thresh']
+                self.free_thresh = data['free_thresh']
+                self.resolution = data['resolution']
+                self.origin_x = data['origin'][0]
+                self.origin_y = data['origin'][1]
+        except FileNotFoundError:
+            print("ERROR: Corresponding YAML file", yaml_file, "is missing.")
+            sys.exit(1)
+        except Exception as e:
+            print("ERROR: Failed to load YAML file:", e)
+            sys.exit(1)
 
     def mapClick(self, event):
         # get current model value

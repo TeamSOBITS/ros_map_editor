@@ -45,3 +45,15 @@ With the Map Editor tool, I can now do all of these things (well, some of these 
 
 
 ## Getting Started
+
+1) Move to this package
+```bash
+$ cd ros_map_editor
+```
+
+2) Move your map and yaml file to this directory
+
+3) Run the editor
+```bash
+$ python3 MapEditor.py (your_map_file_name)
+```
