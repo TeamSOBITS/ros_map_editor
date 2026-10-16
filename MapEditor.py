@@ -169,12 +169,16 @@ class MapEditor(QtWidgets.QMainWindow):
 
 
     def scrollChanged(self, val):
-        
-        if self.scene.width() and self.scene.height():
-            x = int(self.ui.graphicsView.horizontalScrollBar().value() /  self.scene.width() * self.im.size[0])
-            y = int(self.ui.graphicsView.verticalScrollBar().value() /  self.scene.height() * self.im.size[1])
-            width = int(self.ui.graphicsView.viewport().size().width() /  self.scene.width() * self.im.size[0])
-            height = int(self.ui.graphicsView.viewport().size().height() /  self.scene.height() * self.im.size[1])
+        # the view may have no scene (or a deleted one) during redraw/shutdown
+        scene = self.ui.graphicsView.scene()
+        if scene is None:
+            return
+
+        if scene.width() and scene.height():
+            x = int(self.ui.graphicsView.horizontalScrollBar().value() /  scene.width() * self.im.size[0])
+            y = int(self.ui.graphicsView.verticalScrollBar().value() /  scene.height() * self.im.size[1])
+            width = int(self.ui.graphicsView.viewport().size().width() /  scene.width() * self.im.size[0])
+            height = int(self.ui.graphicsView.viewport().size().height() /  scene.height() * self.im.size[1])
             self.drawBox(x, y, width, height)
 
 
