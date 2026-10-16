@@ -165,6 +165,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="rectSelectCheckBox">
+        <property name="text">
+         <string>Rectangle Fill</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">

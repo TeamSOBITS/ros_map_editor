@@ -41,6 +41,11 @@ class MapEditor(QtWidgets.QMainWindow):
         self.ui.colorBox.currentIndexChanged.connect(self.handleColor)
         self.color = 'alternate'
 
+        self.ui.rectSelectCheckBox.stateChanged.connect(self.handleRectMode)
+        self.rect_select_mode = False
+        self.rect_start = None
+        self.rect_preview_item = None
+
         self.read(fn)
 
         view_width = self.frameGeometry().width()
@@ -62,27 +67,101 @@ class MapEditor(QtWidgets.QMainWindow):
 
 
     def eventFilter(self, source, event):
-        if event.type() == QtCore.QEvent.MouseMove and source is self.ui.graphicsView.viewport() and self.color != 'alternate' and event.buttons() == QtCore.Qt.LeftButton:
-            pos = event.pos()
-            x = pos.x() + self.ui.graphicsView.horizontalScrollBar().value()
-            y = pos.y() + self.ui.graphicsView.verticalScrollBar().value()
-            x = math.floor(x / self.pixels_per_cell)
-            y = math.floor(y / self.pixels_per_cell)
-            val = self.im.getpixel((x,y))
+        if source is self.ui.graphicsView.viewport():
+            rect_active = self.rect_select_mode and self.color != 'alternate'
 
-            if self.color == 'occupied':
-                val = 0
-            elif self.color == 'unoccupied':
-                val = 255
-            elif self.color == 'uncertain':
-                val = 200
-            # update model with new value
-            self.im.putpixel((x,y), val)    
+            if rect_active and event.type() == QtCore.QEvent.MouseButtonPress and event.button() == QtCore.Qt.LeftButton:
+                x, y = self.clamp_cell(*self.view_pos_to_cell(event.pos()))
+                self.rect_start = (x, y)
+                self.update_rect_preview(x, y)
 
-            # redraw cell in new color
-            color = self.value2color(val)
-            self.color_cell(x, y, color)
+            elif rect_active and self.rect_start is not None and event.type() == QtCore.QEvent.MouseMove and event.buttons() == QtCore.Qt.LeftButton:
+                x, y = self.clamp_cell(*self.view_pos_to_cell(event.pos()))
+                self.update_rect_preview(x, y)
+
+            elif rect_active and self.rect_start is not None and event.type() == QtCore.QEvent.MouseButtonRelease and event.button() == QtCore.Qt.LeftButton:
+                x, y = self.clamp_cell(*self.view_pos_to_cell(event.pos()))
+                self.apply_rect_fill(self.rect_start, (x, y))
+                self.rect_start = None
+                self.clear_rect_preview()
+
+            elif not self.rect_select_mode and event.type() == QtCore.QEvent.MouseMove and self.color != 'alternate' and event.buttons() == QtCore.Qt.LeftButton:
+                x, y = self.clamp_cell(*self.view_pos_to_cell(event.pos()))
+                val = self.im.getpixel((x,y))
+
+                if self.color == 'occupied':
+                    val = 0
+                elif self.color == 'unoccupied':
+                    val = 255
+                elif self.color == 'uncertain':
+                    val = 200
+                # update model with new value
+                self.im.putpixel((x,y), val)
+
+                # redraw cell in new color
+                color = self.value2color(val)
+                self.color_cell(x, y, color)
         return super(MapEditor, self).eventFilter(source, event)
+
+    def view_pos_to_cell(self, pos):
+        scene_pos = self.ui.graphicsView.mapToScene(pos)
+        x = math.floor(scene_pos.x() / self.pixels_per_cell)
+        y = math.floor(scene_pos.y() / self.pixels_per_cell)
+        return x, y
+
+    def clamp_cell(self, x, y):
+        x = max(0, min(x, self.map_width_cells - 1))
+        y = max(0, min(y, self.map_height_cells - 1))
+        return x, y
+
+    def handleRectMode(self, state):
+        self.rect_select_mode = (state == QtCore.Qt.Checked)
+        self.rect_start = None
+        self.clear_rect_preview()
+
+    def update_rect_preview(self, x, y):
+        if self.rect_start is None:
+            return
+        x0, y0 = self.rect_start
+        xmin, xmax = min(x0, x), max(x0, x)
+        ymin, ymax = min(y0, y), max(y0, y)
+
+        px = xmin * self.pixels_per_cell
+        py = ymin * self.pixels_per_cell
+        pw = (xmax - xmin + 1) * self.pixels_per_cell
+        ph = (ymax - ymin + 1) * self.pixels_per_cell
+
+        if self.rect_preview_item is None:
+            pen = QPen(Qt.red)
+            pen.setWidth(2)
+            self.rect_preview_item = self.scene.addRect(px, py, pw, ph, pen)
+        else:
+            self.rect_preview_item.setRect(px, py, pw, ph)
+
+    def clear_rect_preview(self):
+        if self.rect_preview_item is not None:
+            self.scene.removeItem(self.rect_preview_item)
+            self.rect_preview_item = None
+
+    def apply_rect_fill(self, start, end):
+        if self.color == 'occupied':
+            val = 0
+        elif self.color == 'unoccupied':
+            val = 255
+        elif self.color == 'uncertain':
+            val = 200
+        else:
+            return
+
+        x0, y0 = start
+        x1, y1 = end
+        xmin, xmax = min(x0, x1), max(x0, x1)
+        ymin, ymax = min(y0, y1), max(y0, y1)
+
+        for x in range(xmin, xmax + 1):
+            for y in range(ymin, ymax + 1):
+                self.im.putpixel((x, y), val)
+                self.color_cell(x, y, self.value2color(val))
 
 
     def paintEvent(self, e):
@@ -90,12 +169,16 @@ class MapEditor(QtWidgets.QMainWindow):
 
 
     def scrollChanged(self, val):
-        
-        if self.scene.width() and self.scene.height():
-            x = int(self.ui.graphicsView.horizontalScrollBar().value() /  self.scene.width() * self.im.size[0])
-            y = int(self.ui.graphicsView.verticalScrollBar().value() /  self.scene.height() * self.im.size[1])
-            width = int(self.ui.graphicsView.viewport().size().width() /  self.scene.width() * self.im.size[0])
-            height = int(self.ui.graphicsView.viewport().size().height() /  self.scene.height() * self.im.size[1])
+        # the view may have no scene (or a deleted one) during redraw/shutdown
+        scene = self.ui.graphicsView.scene()
+        if scene is None:
+            return
+
+        if scene.width() and scene.height():
+            x = int(self.ui.graphicsView.horizontalScrollBar().value() /  scene.width() * self.im.size[0])
+            y = int(self.ui.graphicsView.verticalScrollBar().value() /  scene.height() * self.im.size[1])
+            width = int(self.ui.graphicsView.viewport().size().width() /  scene.width() * self.im.size[0])
+            height = int(self.ui.graphicsView.viewport().size().height() /  scene.height() * self.im.size[1])
             self.drawBox(x, y, width, height)
 
 
@@ -175,6 +258,9 @@ class MapEditor(QtWidgets.QMainWindow):
             sys.exit(1)
 
     def mapClick(self, event):
+        if self.rect_select_mode:
+            return
+
         # get current model value
         x = math.floor(event.scenePos().x() / self.pixels_per_cell)
         y = math.floor(event.scenePos().y() / self.pixels_per_cell)
@@ -237,7 +323,9 @@ class MapEditor(QtWidgets.QMainWindow):
         return self.scene.addRect(x, y, self.pixels_per_cell, self.pixels_per_cell, pen, brush)
 
 
-    def draw_map(self):        
+    def draw_map(self):
+        self.rect_start = None
+        self.rect_preview_item = None
         self.scene = QtWidgets.QGraphicsScene()
         self.ui.graphicsView.setScene(self.scene)
         self.scene.mousePressEvent = self.mapClick

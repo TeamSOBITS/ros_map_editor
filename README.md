@@ -30,17 +30,17 @@ With the Map Editor tool, I can now do all of these things (well, some of these 
 
 6) Can color free form with mouse drag or pixel by pixel by clicking
 
+7) Check "Rectangle Fill" and drag to color a rectangular region of cells at once (a preview outline is shown while dragging; releases the mouse to apply). Requires a specific color (occupied/unoccupied/uncertain) to be selected rather than "alternate".
+
 ## Future Functionality
 
-1) Draw rectangles
+1) Overlay Google Map
 
-2) Overlay Google Map
+2) Start a New map (currently only opens on current map)
 
-3) Start a New map (currently only opens on current map)
+3) Associate map/grids with lat/lng
 
-4) Associate map/grids with lat/lng
-
-5) mods to yaml file as well
+4) mods to yaml file as well
 
 
 
