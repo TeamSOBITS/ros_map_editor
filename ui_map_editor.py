@@ -109,6 +109,11 @@ class Ui_MapEditor(object):
         self.colorBox.setObjectName("colorBox")
         self.horizontalLayout.addWidget(self.colorBox)
 
+        # rectangle select checkbox
+        self.rectSelectCheckBox = QtWidgets.QCheckBox(self.centralwidget)
+        self.rectSelectCheckBox.setObjectName("rectSelectCheckBox")
+        self.horizontalLayout.addWidget(self.rectSelectCheckBox)
+
         # zoom box label
         self.label = QtWidgets.QLabel(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Preferred)
@@ -182,6 +187,7 @@ class Ui_MapEditor(object):
         self.label_9.setText(_translate("MapEditor", "Cell"))
         self.cell_lbl.setText(_translate("MapEditor", "TextLabel"))
         self.label_11.setText(_translate("MapEditor", "Color"))
+        self.rectSelectCheckBox.setText(_translate("MapEditor", "Rectangle Fill"))
 
 
 if __name__ == "__main__":
